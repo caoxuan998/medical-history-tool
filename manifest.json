@@ -1,0 +1,16 @@
+{
+  "name": "病史采集表",
+  "short_name": "病史采集",
+  "description": "规培生问诊模板：内置多科室清单，条目可自行增删，主诉现病史可填，一键导出图片打印",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef2f6",
+  "theme_color": "#1565c0",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

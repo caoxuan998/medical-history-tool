@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="病史采集">
+<title>病史采集表</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+  :root{
+    --blue:#1565c0; --blue-d:#0d47a1; --line:#cfd8dc; --ink:#1a1a1a;
+    --bg:#eef2f6; --chip:#e3f2fd;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink); font-size:16px; -webkit-text-size-adjust:100%;}
+  header{position:sticky; top:0; z-index:10; background:var(--blue); color:#fff;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;
+    display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  header h1{font-size:17px; margin:0; font-weight:700; flex:1; letter-spacing:.5px;}
+  header .btns{display:flex; gap:8px;}
+  header button{border:none; border-radius:8px; padding:8px 12px; font-size:14px;
+    font-weight:600; cursor:pointer; background:#fff; color:var(--blue); white-space:nowrap;}
+  header button.ghost{background:rgba(255,255,255,.18); color:#fff;}
+  /* 科室切换条 */
+  .deptbar{max-width:820px; margin:12px auto 0; padding:0 16px; display:flex; align-items:center; gap:10px;}
+  .deptbar select{flex:1; padding:9px 10px; border-radius:8px; border:1px solid var(--line);
+    background:#fff; font-size:15px; color:var(--ink);}
+  .deptbar button{border:1px solid var(--line); background:#fff; border-radius:8px;
+    padding:8px 12px; font-size:13px; color:#455a64; white-space:nowrap;}
+  /* 纸张 */
+  #sheet{background:#fff; max-width:820px; margin:14px auto; padding:26px 30px;
+    border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.08);}
+  .sheet-title{text-align:center; font-size:22px; font-weight:800; margin:0 0 4px; color:var(--blue-d);}
+  .sheet-sub{text-align:center; color:#607d8b; font-size:13px; margin-bottom:16px;}
+  .meta{display:grid; grid-template-columns:repeat(5,1fr); gap:10px 14px;
+    border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px;}
+  .meta label{display:flex; flex-direction:column; font-size:12px; color:#607d8b; gap:4px;}
+  .meta input{border:none; border-bottom:1.5px solid var(--line); padding:4px 2px;
+    font-size:15px; color:var(--ink); background:transparent; outline:none; width:100%;}
+  .meta input:focus{border-bottom-color:var(--blue);}
+  .block{border:1px solid var(--line); border-radius:8px; margin-bottom:12px; overflow:hidden;}
+  .block > .head{background:var(--chip); color:var(--blue-d); font-weight:700;
+    font-size:15px; padding:9px 14px; display:flex; align-items:center; gap:8px;}
+  .head .note{margin-left:auto; font-weight:400; color:#607d8b; font-size:12px;}
+  .head .addbtn{margin:0; border:none; background:var(--blue); color:#fff; border-radius:6px;
+    width:26px; height:26px; font-size:17px; line-height:1; cursor:pointer; flex:none;}
+  .block .body{padding:10px 14px;}
+  .block textarea{width:100%; min-height:60px; border:none; outline:none; resize:vertical;
+    font-size:15px; line-height:1.6; color:var(--ink); font-family:inherit; background:transparent;}
+  .block textarea::placeholder{color:#b0bec5;}
+  /* 勾选清单 */
+  .checks{display:grid; grid-template-columns:1fr 1fr; gap:6px 18px;}
+  .item{display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px; min-width:0;}
+  .item label{display:flex; align-items:flex-start; gap:8px; font-size:14.5px;
+    cursor:pointer; line-height:1.4; flex:1; min-width:0;}
+  .item input[type=checkbox]{width:18px; height:18px; margin-top:1px; accent-color:var(--blue); flex:none;}
+  .item .tx{word-break:break-all;}
+  .del{color:#90a4ae; font-size:16px; line-height:1.2; padding:0 4px; cursor:pointer; flex:none;}
+  .del:active{color:#e53935;}
+  .item .detail{flex:1 1 100%; display:none; margin-top:5px; border:1px solid var(--line);
+    border-radius:6px; padding:6px 8px; font-size:13.5px; outline:none; font-family:inherit; color:var(--ink); background:#fafcff;}
+  .item .detail:focus{border-color:var(--blue);}
+  .item.on .detail{display:block;}
+  .addrow{display:flex; gap:8px; margin-top:8px;}
+  .addrow input{flex:1; border:1px solid var(--line); border-radius:6px; padding:7px 10px;
+    font-size:14px; outline:none; min-width:0;}
+  .addrow input:focus{border-color:var(--blue);}
+  .addrow button{border:none; background:var(--blue); color:#fff; border-radius:6px;
+    padding:7px 14px; font-size:14px; font-weight:600;}
+  .hint{font-size:12px; color:#90a4ae; text-align:center; margin:18px 0 4px;}
+  /* 图片预览 */
+  #previewMask{position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:50;
+    display:none; flex-direction:column; align-items:center; justify-content:flex-start; padding:24px 16px; overflow:auto;}
+  #previewMask.show{display:flex;}
+  #previewMask img{max-width:100%; background:#fff; border-radius:8px; margin-bottom:14px;}
+  #previewMask p{color:#fff; font-size:14px; text-align:center; margin:6px 0;}
+  #previewMask a{color:#90caf9; font-size:14px; margin-top:6px;}
+  #previewMask button{margin-top:14px; border:none; border-radius:8px; padding:10px 22px;
+    font-size:15px; font-weight:700; background:#fff; color:var(--blue);}
+  /* 导出/打印时隐藏编辑控件 */
+  #sheet.exporting .del,#sheet.exporting .addbtn,#sheet.exporting .addrow{display:none !important;}
+  #sheet.exporting .item.on .detail{border:none; border-bottom:1px solid #cfd8dc; background:transparent; border-radius:0; padding:2px 0; margin-top:2px;}
+  @media print{
+    header,.deptbar,.hint,#previewMask{display:none !important;}
+    .del,.addbtn,.addrow{display:none !important;}
+    .item.on .detail{border:none; border-bottom:1px solid #999; background:transparent; border-radius:0; padding:2px 0; margin-top:2px;}
+    body{background:#fff;}
+    #sheet{box-shadow:none; margin:0; max-width:100%; padding:0;}
+    .block .body{page-break-inside:avoid;}
+  }
+  @media (max-width:620px){
+    .meta{grid-template-columns:repeat(2,1fr);}
+    .checks{grid-template-columns:1fr;}
+    #sheet{padding:18px 16px; margin:12px 12px;}
+    header h1{font-size:16px;}
+    header .btns button{padding:8px 9px; font-size:13px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>病史采集表</h1>
+  <div class="btns">
+    <button onclick="exportImage()">导出图片</button>
+    <button class="ghost" onclick="window.print()">打印</button>
+    <button class="ghost" onclick="clearForm()">清空</button>
+  </div>
+</header>
+
+<div class="deptbar">
+  <select id="deptSel" onchange="switchDept(this.value)"></select>
+  <button onclick="resetList()">恢复本模板默认</button>
+</div>
+
+<main id="sheet">
+  <div class="sheet-title" id="sheetTitle"></div>
+  <div class="sheet-sub">现场问诊提纲 · 清单可自行增删 · 主诉 / 现病史按病人填写</div>
+
+  <div class="meta">
+    <label>姓名<input id="m_name"></label>
+    <label>床号<input id="m_bed"></label>
+    <label>性别<input id="m_sex"></label>
+    <label>年龄<input id="m_age"></label>
+    <label>日期<input id="m_date" type="date"></label>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>主诉</span><span class="note">每次不同</span></div>
+    <div class="body"><textarea id="t_chief"></textarea></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>现病史</span><span class="note">每次不同</span></div>
+    <div class="body"><textarea id="t_present" style="min-height:110px;"></textarea></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span id="spTitle">专科症状</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_special" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_special"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>既往史</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_past" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_past"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>个人史</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_personal" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_personal"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>过敏史</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_allergy" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_allergy"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>婚育史</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_marry" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_marry"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>月经生育史</span><span class="note">固定的（女性）</span>
+      <button class="addbtn" data-id="c_menstrual" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_menstrual"></div></div>
+  </div>
+
+  <div class="block">
+    <div class="head"><span>家族史</span><span class="note">固定的</span>
+      <button class="addbtn" data-id="c_family" title="添加条目">+</button></div>
+    <div class="body"><div class="checks" id="c_family"></div></div>
+  </div>
+
+  <div class="hint">填写内容自动保存在本机 · 每个科室模板有各自的清单，可分别增删</div>
+</main>
+
+<div id="previewMask">
+  <img id="previewImg" alt="病史采集表">
+  <p>长按上方图片即可保存到相册，或截图打印</p>
+  <a id="previewLink" download="病史采集表.png">点此下载图片</a>
+  <button onclick="closePreview()">关闭</button>
+</div>
+
+<script src="./vendor/html2canvas.min.js"></script>
+<script>
+/* ================= 科室模板 ================= */
+const BASE = {
+  c_past:["高血压","糖尿病","冠心病/心梗","乙肝/肝硬化","结核","肿瘤史","手术史","外伤史","输血史","长期用药史"],
+  c_personal:["出生地/居住地","职业与毒物接触","吸烟史","饮酒史","疫区/疫水接触","冶游史"],
+  c_allergy:["青霉素/头孢过敏","磺胺类过敏","解热镇痛药过敏","食物过敏","其他过敏"],
+  c_marry:["已婚/未婚","配偶健康状况","生育情况","流产/早产史"],
+  c_menstrual:["初潮年龄","月经周期/经期","经量/痛经","末次月经(LMP)","绝经年龄"],
+  c_family:["遗传病史","高血压/糖尿病","恶性肿瘤","肝炎/结核等传染病"]
+};
+const DEPTS = {
+  digest:{name:"消化内科", specialTitle:"消化系统症状",
+    chief:"例：反复上腹痛3月，加重伴黑便1周",
+    present:"起病诱因、腹痛部位性质与节律、伴随消化症状、外院诊治经过、近期体重与饮食变化……",
+    special:["上腹痛/节律性","恶心呕吐","反酸烧心","黑便/呕血","黄疸","腹泻/便秘","腹胀","体重下降","吞咽困难","便血"]},
+  cardio:{name:"心血管内科", specialTitle:"心血管症状",
+    chief:"例：活动后胸闷气促2月，夜间不能平卧1周",
+    present:"起病诱因、胸痛部位性质与放射、持续时间、缓解方式、心功能变化、用药及疗效……",
+    special:["胸痛/压榨感","心悸","活动后气促","夜间阵发性呼吸困难","下肢水肿","晕厥/黑矇","高血压病程","血脂异常","NYHA分级","硝酸甘油缓解"]},
+  resp:{name:"呼吸内科", specialTitle:"呼吸系统症状",
+    chief:"例：咳嗽咳痰2周，伴发热3天",
+    present:"起病缓急、咳嗽性质与痰的性状量色、咯血量、呼吸困难程度、发热热型、抗感染疗效……",
+    special:["咳嗽/咳痰性状","咯血","喘息","呼吸困难","胸痛","发热盗汗","季节性发作","粉尘/烟雾接触","既往肺功能","吸烟指数"]},
+  endo:{name:"内分泌科", specialTitle:"内分泌代谢症状",
+    chief:"例：多饮多尿消瘦1月",
+    present:"起病时间、症状组合（三多一少）、血糖波动与监测值、酮症/低血糖发作、用药与胰岛素方案、并发症筛查……",
+    special:["多饮多尿","多食易饥","体重变化","怕热心悸/怕冷乏力","手抖","皮肤色素沉着","血压波动","低血糖发作","视力模糊","手足麻木/足部溃疡"]},
+  neph:{name:"肾内科", specialTitle:"泌尿系统症状",
+    chief:"例：双下肢水肿1月，尿中泡沫增多",
+    present:"起病缓急、水肿部位与消长、尿量与尿色变化、泡沫尿/血尿、血压水平、肾功能数值、肾病史……",
+    special:["眼睑/双下肢水肿","尿量改变","泡沫尿","血尿","尿频尿急尿痛","腰痛","高血压","夜尿增多","既往肾炎/蛋白尿","肾毒性药物接触"]},
+  neuro:{name:"神经内科", specialTitle:"神经系统症状",
+    chief:"例：突发右侧肢体无力伴言语不清2小时",
+    present:"起病形式（急骤/渐进）、症状演变时间线、局灶体征、意识与颅神经、既往卒中/TIA、影像结果……",
+    special:["头痛（部位/性质）","头晕眩晕","肢体无力","肢体麻木","抽搐","言语不清","意识障碍","记忆力减退","视物重影","睡眠障碍"]},
+  hema:{name:"血液科", specialTitle:"血液系统症状",
+    chief:"例：乏力面色苍白2月，皮肤瘀斑1周",
+    present:"起病缓急、贫血相关症状、出血部位与程度、发热与感染史、输血史、血象与骨髓结果……",
+    special:["乏力苍白","皮肤瘀点瘀斑","鼻出血/牙龈出血","发热","骨痛","淋巴结肿大","肝脾肿大","输血依赖","月经量过多","长期贫血"]},
+  rheum:{name:"风湿免疫科", specialTitle:"风湿免疫症状",
+    chief:"例：双手关节肿痛伴晨僵3月",
+    present:"起病关节与演变、晨僵时长、关节外表现（皮疹/口眼干/雷诺）、自身抗体结果、既往治疗反应……",
+    special:["关节肿痛（部位/数）","晨僵>1小时","皮疹/光过敏","口腔溃疡","口眼干燥","雷诺现象","肌痛肌无力","腰背痛/僵硬","发热","脏器受累筛查"]}
+};
+const SEC_IDS = ['c_special','c_past','c_personal','c_allergy','c_marry','c_menstrual','c_family'];
+const KEY = 'hist_tool_v2';
+
+/* ================= 状态 ================= */
+function emptyForm(){return {meta:{},chief:'',present:'',checks:{},detail:{},custom:{},removed:{}};}
+let state = null;
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw) state = JSON.parse(raw); }catch(e){}
+  if(!state || !state.forms){
+    state = {dept:'digest', forms:{}};
+    try{ // 迁移旧版单科室数据
+      const old = JSON.parse(localStorage.getItem('gi_history_v1')||'null');
+      if(old){ const f = emptyForm(); f.meta=old.meta||{}; f.chief=old.chief||'';
+        f.present=old.present||''; f.checks=old.checks||{}; state.forms.digest=f; }
+    }catch(e){}
+  }
+  if(!DEPTS[state.dept]) state.dept='digest';
+  for(const d in DEPTS) if(!state.forms[d]) state.forms[d]=emptyForm();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function form(){ return state.forms[state.dept]; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function val(id){ const e=document.getElementById(id); return e?e.value:''; }
+
+/* ================= 渲染 ================= */
+function baseItems(id){
+  return id==='c_special' ? (DEPTS[state.dept].special||[]) : (BASE[id]||[]);
+}
+function itemsOf(id){
+  const f=form(); const rm=f.removed[id]||[];
+  const kept=baseItems(id).filter(x=>rm.indexOf(x)<0);
+  return kept.concat(f.custom[id]||[]);
+}
+function renderChecks(){
+  SEC_IDS.forEach(id=>{
+    const box=document.getElementById(id); if(!box) return;
+    const f=form();
+    box.innerHTML = itemsOf(id).map(t=>{
+      const k=id+'::'+t;
+      const det=(f.detail&&f.detail[k])?f.detail[k]:'';
+      return '<div class="item'+(f.checks[k]?' on':'')+'">'+
+        '<label><input type="checkbox" data-k="'+esc(k)+'"'+(f.checks[k]?' checked':'')+
+        ' onchange="toggleItem(this)"><span class="tx">'+esc(t)+'</span></label>'+
+        '<span class="del" data-id="'+id+'" data-tx="'+esc(t)+'" title="删除">×</span>'+
+        '<input class="detail" data-k="'+esc(k)+'" placeholder="补充：如 2019年阑尾切除术" value="'+esc(det)+'" oninput="saveDetail(this)"></div>';
+    }).join('');
+  });
+}
+function renderAll(){
+  const d=DEPTS[state.dept];
+  document.getElementById('deptSel').value=state.dept;
+  document.getElementById('sheetTitle').textContent=d.name+' 入院病史采集';
+  document.getElementById('spTitle').textContent=d.specialTitle;
+  document.getElementById('t_chief').placeholder=d.chief;
+  document.getElementById('t_present').placeholder=d.present;
+  const f=form();
+  ['m_name','m_bed','m_sex','m_age','m_date'].forEach(k=>{
+    const el=document.getElementById(k); if(el) el.value=f.meta[k]||'';});
+  document.getElementById('t_chief').value=f.chief||'';
+  document.getElementById('t_present').value=f.present||'';
+  renderChecks();
+}
+/* 初始化下拉 */
+(function initSel(){
+  const sel=document.getElementById('deptSel');
+  sel.innerHTML=Object.keys(DEPTS).map(k=>'<option value="'+k+'">'+esc(DEPTS[k].name)+'</option>').join('');
+})();
+
+/* ================= 交互 ================= */
+function collect(){
+  const f=form();
+  ['m_name','m_bed','m_sex','m_age','m_date'].forEach(k=>f.meta[k]=val(k));
+  f.chief=val('t_chief'); f.present=val('t_present');
+  f.checks={};
+  document.querySelectorAll('.checks input[type=checkbox]').forEach(c=>{f.checks[c.dataset.k]=c.checked;});
+  save();
+}
+function switchDept(d){
+  collect(); state.dept=d; save(); renderAll();
+}
+function toggleItem(cb){
+  collect();
+  const item=cb.closest('.item');
+  if(cb.checked){ item.classList.add('on'); const d=item.querySelector('.detail'); if(d) d.focus(); }
+  else { item.classList.remove('on'); }
+}
+function saveDetail(inp){
+  const f=form(); f.detail=f.detail||{}; f.detail[inp.dataset.k]=inp.value; save();
+}
+/* 添加条目 */
+function addRow(sid){
+  const box=document.getElementById(sid); const body=box.parentNode;
+  let row=body.querySelector('.addrow');
+  if(row){ row.querySelector('input').focus(); return; }
+  row=document.createElement('div'); row.className='addrow';
+  row.innerHTML='<input placeholder="新条目名称"><button>确定</button>';
+  const inp=row.querySelector('input'), btn=row.querySelector('button');
+  const commit=()=>{ const v=inp.value.trim(); row.remove(); if(v) doAdd(sid,v); };
+  btn.onclick=commit;
+  inp.onkeydown=e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape') row.remove(); };
+  body.appendChild(row); inp.focus();
+}
+function doAdd(sid,text){
+  const f=form(); f.custom[sid]=f.custom[sid]||[];
+  if(f.custom[sid].indexOf(text)<0) f.custom[sid].push(text);
+  save(); renderChecks();
+}
+function delItem(sid,text){
+  const f=form(); f.removed[sid]=f.removed[sid]||[];
+  const ci=(f.custom[sid]||[]).indexOf(text);
+  if(ci>=0){ f.custom[sid].splice(ci,1); }
+  else if(f.removed[sid].indexOf(text)<0){ f.removed[sid].push(text); }
+  save(); renderChecks();
+}
+function resetList(){
+  if(!confirm('恢复「'+DEPTS[state.dept].name+'」模���的默认清单？你自己增删的条目会被清除。')) return;
+  const f=form(); f.custom={}; f.removed={}; save(); renderChecks();
+}
+function clearForm(){
+  if(!confirm('只清空本次填写的内容（清单定制保留）。确定清空？')) return;
+  const f=form();
+  ['m_name','m_bed','m_sex','m_age','m_date'].forEach(k=>f.meta[k]='');
+  f.chief=''; f.present=''; f.checks={}; f.detail={};
+  save(); renderAll();
+}
+document.addEventListener('click', e=>{
+  const del=e.target.closest('.del');
+  if(del){ delItem(del.dataset.id, del.dataset.tx); return; }
+  const add=e.target.closest('.addbtn');
+  if(add){ addRow(add.dataset.id); }
+});
+document.addEventListener('input', collect);
+document.addEventListener('change', collect);
+
+load(); renderAll();
+
+/* ================= 导出 ================= */
+function exportImage(){
+  const sheet=document.getElementById('sheet');
+  if(typeof html2canvas!=='function'){ alert('导出组件未加载，请联网后重试'); return; }
+  sheet.classList.add('exporting');
+  html2canvas(sheet,{scale:2, backgroundColor:'#ffffff', useCORS:true}).then(canvas=>{
+    sheet.classList.remove('exporting');
+    const url=canvas.toDataURL('image/png');
+    document.getElementById('previewImg').src=url;
+    document.getElementById('previewLink').href=url;
+    document.getElementById('previewMask').classList.add('show');
+  }).catch(err=>{ sheet.classList.remove('exporting'); alert('导出失败：'+err.message); });
+}
+function closePreview(){ document.getElementById('previewMask').classList.remove('show'); }
+</script>
+<script>
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
